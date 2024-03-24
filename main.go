@@ -12,9 +12,12 @@ func main() {
 	corsMux := middlewareCors(mux)
 
 	srv := http.Server{
-		Addr:    ":8000",
+		Addr:    ":8080",
 		Handler: corsMux,
 	}
+
+	mux.Handle("/", http.FileServer(http.Dir(".")))
+
 	fmt.Printf("Listening on port %s\n", srv.Addr)
 	err := srv.ListenAndServe()
 	// err := http.ListenAndServe(":8000", corsMux)
