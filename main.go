@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -27,9 +28,12 @@ func main() {
 	fileServer := http.FileServer(http.Dir("."))
 
 	mux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app", fileServer)))
+
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
-	mux.HandleFunc("GET /admin/metrics", http.HandlerFunc(cfg.handlerMetrics))
 	mux.HandleFunc("/api/reset", http.HandlerFunc(cfg.handlerReset))
+	mux.HandleFunc("POST /api/validate_chirp", http.HandlerFunc(handlerValidateChirp))
+
+	mux.HandleFunc("GET /admin/metrics", http.HandlerFunc(cfg.handlerMetrics))
 
 	// mux.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets/"))))
 
@@ -95,4 +99,57 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	cfg.fileserverHits = 0
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
+}
+
+func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
+	type params struct {
+		Body string `json:"body"`
+	}
+
+	type returnVals struct {
+		Valid bool `json:"valid"`
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	decoder := json.NewDecoder(r.Body)
+	chirpText := params{}
+	err := decoder.Decode(&chirpText)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode paramters")
+		return
+	}
+
+	if len(chirpText.Body) > 140 {
+		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
+		return
+	}
+
+	respondWithJSON(w, http.StatusBadRequest, returnVals{
+		Valid: true,
+	})
+}
+
+func respondWithError(w http.ResponseWriter, code int, message string) {
+	if code > 499 {
+		log.Printf("Responing with 5xx error: %s", message)
+	}
+	type errorResponse struct {
+		Error string `json:"error"`
+	}
+	respondWithJSON(w, code, errorResponse{
+		Error: message,
+	})
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	dat, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		w.WriteHeader(500)
+		return
+	}
+	w.WriteHeader(code)
+	w.Write(dat)
 }
