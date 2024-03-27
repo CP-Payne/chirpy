@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/CP-Payne/chirpy/internal/database"
@@ -43,6 +44,7 @@ func main() {
 	mux.HandleFunc("/api/reset", http.HandlerFunc(cfg.handlerReset))
 	mux.HandleFunc("POST /api/chirps", http.HandlerFunc(cfg.handlerAddChirp))
 	mux.HandleFunc("GET /api/chirps", http.HandlerFunc(cfg.handlerGetChirps))
+	mux.HandleFunc("GET /api/chirps/{chirp_id}", http.HandlerFunc(cfg.handlerGetChirp))
 
 	mux.HandleFunc("GET /admin/metrics", http.HandlerFunc(cfg.handlerMetrics))
 
@@ -120,6 +122,31 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, respChirps)
+
+}
+
+func (cfg *apiConfig) handlerGetChirp(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("chirp_id")
+	intId, err := strconv.Atoi(id)
+	if err != nil {
+		fmt.Println(err)
+		respondWithError(w, http.StatusBadRequest, "Invalid chirp id")
+		return
+	}
+
+	chirp, err := cfg.DB.GetChirp(intId)
+	if err != nil {
+		fmt.Println(err)
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+	if chirp.ID == 0 {
+		respondWithError(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+		return
+
+	}
+
+	respondWithJSON(w, http.StatusOK, chirp)
 
 }
 
