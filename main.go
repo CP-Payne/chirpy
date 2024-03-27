@@ -6,17 +6,26 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/CP-Payne/chirpy/internal/database"
 )
 
 type apiConfig struct {
 	fileserverHits int
+	DB             *database.DB
 }
 
 func main() {
 	mux := http.NewServeMux()
 
+	db, err := database.NewDB("./database.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	cfg := &apiConfig{
 		fileserverHits: 0,
+		DB:             db,
 	}
 
 	corsMux := middlewareCors(mux)
@@ -32,14 +41,15 @@ func main() {
 
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("/api/reset", http.HandlerFunc(cfg.handlerReset))
-	mux.HandleFunc("POST /api/validate_chirp", http.HandlerFunc(handlerValidateChirp))
+	mux.HandleFunc("POST /api/chirps", http.HandlerFunc(cfg.handlerAddChirp))
+	mux.HandleFunc("GET /api/chirps", http.HandlerFunc(cfg.handlerGetChirps))
 
 	mux.HandleFunc("GET /admin/metrics", http.HandlerFunc(cfg.handlerMetrics))
 
 	// mux.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets/"))))
 
 	fmt.Printf("Listening on port %s\n", srv.Addr)
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 	// err := http.ListenAndServe(":8000", corsMux)
 	if err != nil {
 		log.Fatal(err)
@@ -102,16 +112,21 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
-func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
+	respChirps, err := cfg.DB.GetChirps()
+	if err != nil {
+		fmt.Println(err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps")
+	}
+
+	respondWithJSON(w, http.StatusOK, respChirps)
+
+}
+
+func (cfg *apiConfig) handlerAddChirp(w http.ResponseWriter, r *http.Request) {
 	type params struct {
 		Body string `json:"body"`
 	}
-
-	type returnVals struct {
-		CleanedBody string `json:"cleaned_body"`
-	}
-
-	w.Header().Set("Content-Type", "application/json")
 
 	decoder := json.NewDecoder(r.Body)
 	chirpText := params{}
@@ -134,9 +149,12 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 
 	cleandedChirp := cleanChirp(chirpText.Body, badWords)
 
-	respondWithJSON(w, http.StatusOK, returnVals{
-		CleanedBody: cleandedChirp,
-	})
+	chirp, err := cfg.DB.CreateChirp(cleandedChirp)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	respondWithJSON(w, http.StatusCreated, chirp)
 }
 
 func respondWithError(w http.ResponseWriter, code int, message string) {
