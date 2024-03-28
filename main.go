@@ -43,6 +43,8 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", http.HandlerFunc(cfg.handlerGetChirps))
 	mux.HandleFunc("GET /api/chirps/{chirp_id}", http.HandlerFunc(cfg.handlerGetChirp))
 
+	mux.HandleFunc("POST /api/users", http.HandlerFunc(cfg.handlerCreateUser))
+
 	mux.HandleFunc("GET /admin/metrics", http.HandlerFunc(cfg.handlerMetrics))
 
 	// mux.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets/"))))

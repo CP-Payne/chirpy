@@ -15,11 +15,17 @@ type DB struct {
 
 type DBStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
+	Users  map[int]User  `json:"users"`
 }
 
 type Chirp struct {
 	ID   int    `json:"id"`
 	Body string `json:"body"`
+}
+
+type User struct {
+	ID    int    `json:"id"`
+	Email string `json:"email"`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -41,22 +47,22 @@ func NewDB(path string) (*DB, error) {
 }
 
 func (db *DB) GetChirps() ([]Chirp, error) {
-	storedChirps, err := db.loadDB()
+	dbData, err := db.loadDB()
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
 
-	if storedChirps.Chirps == nil {
+	if dbData.Chirps == nil {
 		return []Chirp{}, nil
 	}
 
 	// Making the length zero will initialize the slice with its null default values
 	// Appending then to the slice will add the elements and keep the previously initialized default values
 	// Therefore, make the slice's length 0
-	chirps := make([]Chirp, 0, len(storedChirps.Chirps))
+	chirps := make([]Chirp, 0, len(dbData.Chirps))
 
-	for _, val := range storedChirps.Chirps {
+	for _, val := range dbData.Chirps {
 		chirps = append(chirps, val)
 	}
 	sort.Slice(chirps, func(i, j int) bool {
@@ -66,12 +72,12 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 }
 
 func (db *DB) GetChirp(id int) (Chirp, error) {
-	storedChirps, err := db.loadDB()
+	dbData, err := db.loadDB()
 	if err != nil {
 		fmt.Println(err)
 		return Chirp{}, err
 	}
-	chirp, ok := storedChirps.Chirps[id]
+	chirp, ok := dbData.Chirps[id]
 	if !ok {
 		return Chirp{}, nil
 	}
@@ -79,14 +85,14 @@ func (db *DB) GetChirp(id int) (Chirp, error) {
 }
 
 func (db *DB) CreateChirp(body string) (Chirp, error) {
-	storedChirps, err := db.loadDB()
+	dbData, err := db.loadDB()
 	if err != nil {
 		fmt.Println(err)
 		return Chirp{}, err
 	}
 
 	newId := 0
-	for key := range storedChirps.Chirps {
+	for key := range dbData.Chirps {
 		if key > newId {
 			newId = key
 		}
@@ -103,12 +109,39 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	// 	storedChirps.Chirps = make(map[int]Chirp)
 	// }
 
-	storedChirps.Chirps[newId] = newChirp
-	err = db.writeDB(storedChirps)
+	dbData.Chirps[newId] = newChirp
+	err = db.writeDB(dbData)
 	if err != nil {
 		return Chirp{}, err
 	}
 	return newChirp, nil
+}
+func (db *DB) CreateUser(email string) (User, error) {
+	dbData, err := db.loadDB()
+	if err != nil {
+		fmt.Println(err)
+		return User{}, err
+	}
+
+	newId := 0
+	for key := range dbData.Users {
+		if key > newId {
+			newId = key
+		}
+	}
+
+	newId++
+
+	newUser := User{
+		ID:    newId,
+		Email: email,
+	}
+	dbData.Users[newId] = newUser
+	err = db.writeDB(dbData)
+	if err != nil {
+		return User{}, err
+	}
+	return newUser, nil
 }
 
 func (db *DB) writeDB(dbStructure DBStructure) error {
@@ -135,15 +168,22 @@ func (db *DB) loadDB() (DBStructure, error) {
 	}
 
 	if len(data) == 0 {
-		return DBStructure{Chirps: make(map[int]Chirp)}, nil
+		return DBStructure{Chirps: make(map[int]Chirp), Users: make(map[int]User)}, nil
 	}
-
-	chirps := DBStructure{}
-	err = json.Unmarshal(data, &chirps)
+	dbData := DBStructure{}
+	err = json.Unmarshal(data, &dbData)
 	if err != nil {
 		// Maybe handle the error within the calling function instead of this function
 		fmt.Printf("Error unmarshalling JSON: %s", err)
 		return DBStructure{}, err
 	}
-	return chirps, nil
+
+	if dbData.Chirps == nil {
+		dbData.Chirps = make(map[int]Chirp)
+	}
+	if dbData.Users == nil {
+		dbData.Users = make(map[int]User)
+	}
+
+	return dbData, nil
 }
