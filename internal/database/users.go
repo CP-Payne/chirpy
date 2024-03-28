@@ -1,13 +1,17 @@
 package database
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type User struct {
-	ID    int    `json:"id"`
-	Email string `json:"email"`
+	ID       int    `json:"id"`
+	Email    string `json:"email"`
+	Password string
 }
 
-func (db *DB) CreateUser(email string) (User, error) {
+func (db *DB) CreateUser(email string, passwordHash string) (User, error) {
 	dbData, err := db.loadDB()
 	if err != nil {
 		fmt.Println(err)
@@ -24,8 +28,9 @@ func (db *DB) CreateUser(email string) (User, error) {
 	newId++
 
 	newUser := User{
-		ID:    newId,
-		Email: email,
+		ID:       newId,
+		Email:    email,
+		Password: passwordHash,
 	}
 	dbData.Users[newId] = newUser
 	err = db.writeDB(dbData)
@@ -33,4 +38,36 @@ func (db *DB) CreateUser(email string) (User, error) {
 		return User{}, err
 	}
 	return newUser, nil
+}
+
+func (db *DB) ValidateUserExist(email string) (bool, error) {
+	dbData, err := db.loadDB()
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+	exist := false
+	for _, val := range dbData.Users {
+		if val.Email == email {
+			exist = true
+			break
+		}
+	}
+
+	return exist, nil
+}
+
+func (db *DB) GetUserByEmail(email string) (User, error) {
+	dbData, err := db.loadDB()
+	if err != nil {
+		fmt.Println(err)
+		return User{}, err
+	}
+	for _, user := range dbData.Users {
+		if user.Email == email {
+			return user, nil
+		}
+	}
+	return User{}, errors.New("user does not exist")
+
 }
