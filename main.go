@@ -4,17 +4,23 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/CP-Payne/chirpy/internal/database"
+	"github.com/joho/godotenv"
 )
 
 type apiConfig struct {
 	fileserverHits int
 	DB             *database.DB
+	jwtSecret      string
 }
 
 func main() {
 	mux := http.NewServeMux()
+	godotenv.Load()
+
+	jwtSecret := os.Getenv("JWT_SECRET")
 
 	db, err := database.NewDB("./database.json")
 	if err != nil {
@@ -24,6 +30,7 @@ func main() {
 	cfg := &apiConfig{
 		fileserverHits: 0,
 		DB:             db,
+		jwtSecret:      jwtSecret,
 	}
 
 	corsMux := middlewareCors(mux)
