@@ -71,3 +71,29 @@ func (db *DB) GetUserByEmail(email string) (User, error) {
 	return User{}, errors.New("user does not exist")
 
 }
+
+func (db *DB) UpdateUser(id int, email, hashedPassword string) error {
+	dbData, err := db.loadDB()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	user, ok := dbData.Users[id]
+	if !ok {
+		return errors.New("could not find user")
+	}
+	user.Email = email
+	user.Password = hashedPassword
+
+	dbData.Users[id] = user
+
+	err = db.writeDB(dbData)
+	if err != nil {
+		fmt.Printf("Failed to write to database: %v", err)
+		return err
+
+	}
+	return nil
+
+}
