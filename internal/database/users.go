@@ -11,6 +11,8 @@ type User struct {
 	Password string
 }
 
+var ErrAlreadyExists = errors.New("already exists")
+
 func (db *DB) CreateUser(email string, passwordHash string) (User, error) {
 	dbData, err := db.loadDB()
 	if err != nil {
@@ -79,9 +81,21 @@ func (db *DB) UpdateUser(id int, email, hashedPassword string) error {
 		return err
 	}
 
+	userEmailExist, err := db.ValidateUserExist(email)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
 	user, ok := dbData.Users[id]
 	if !ok {
 		return errors.New("could not find user")
+	}
+
+	// Check if the email does not exist or that it is not equal to its current email
+	// If the provided email and the current email are the same, the user is probably just changing the password
+	if userEmailExist && user.Email != email {
+		return ErrAlreadyExists
 	}
 	user.Email = email
 	user.Password = hashedPassword
