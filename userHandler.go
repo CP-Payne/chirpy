@@ -12,10 +12,11 @@ import (
 )
 
 type User struct {
-	ID       int    `json:"id"`
-	Email    string `json:"email"`
-	Password string `json:"-"`
-	Token    string `json:"token,omitempty"`
+	ID           int    `json:"id"`
+	Email        string `json:"email"`
+	Password     string `json:"-"`
+	Token        string `json:"token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -61,65 +62,6 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	respondWithJSON(w, http.StatusCreated, response{User{ID: user.ID, Email: user.Email}})
 }
 
-func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
-	type params struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds *int64 `json:"expires_in_seconds,omitempty"`
-	}
-	type response struct {
-		User
-	}
-	decoder := json.NewDecoder(r.Body)
-	userParams := params{}
-	err := decoder.Decode(&userParams)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode paramters")
-		return
-	}
-	userExist, err := cfg.DB.ValidateUserExist(userParams.Email)
-	if err != nil {
-		fmt.Println(err)
-		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
-		return
-	}
-	user := database.User{}
-	if userExist {
-		user, err = cfg.DB.GetUserByEmail(userParams.Email)
-		if err != nil {
-			fmt.Println(err)
-			respondWithError(w, http.StatusInternalServerError, "Something went wrong")
-			return
-		}
-
-	}
-	err = auth.CheckPasswordHash(userParams.Password, user.Password)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Incorrect credentials")
-		return
-	}
-
-	// Using int64 for if we want to increase the 24 hour expire limit in the future
-	expiresInSeconds := int64(0)
-	if userParams.ExpiresInSeconds != nil {
-		expiresInSeconds = *userParams.ExpiresInSeconds
-	}
-	const maxExpirationInSeconds = 24 * 60 * 60
-	if expiresInSeconds <= 0 || expiresInSeconds > maxExpirationInSeconds {
-		expiresInSeconds = maxExpirationInSeconds
-	}
-
-	// If expiration time is set to 0 or greater than 24 hours, it will default to 24 hours
-	token, err := auth.CreateToken(user.ID, cfg.jwtSecret, expiresInSeconds)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, response{User{ID: user.ID, Email: user.Email, Token: token}})
-
-}
-
 func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	type params struct {
@@ -136,8 +78,13 @@ func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	subject, err := auth.ValidateJWT(token, cfg.jwtSecret)
-	if err != nil {
+	subject, issuer, err := auth.ValidateToken(token, cfg.jwtSecret)
+	if err != nil || subject == "" || issuer == "" {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT")
+		return
+	}
+
+	if issuer == "chirpy-refresh" {
 		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT")
 		return
 	}

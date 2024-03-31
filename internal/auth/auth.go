@@ -31,7 +31,29 @@ func CreateToken(userID int, tokenSecret string, expiresInSeconds int64) (string
 	now := time.Now().UTC()
 
 	claims := jwt.RegisteredClaims{
-		Issuer:    "chirpy",
+		Issuer:    "chirpy-access",
+		IssuedAt:  jwt.NewNumericDate(now),
+		ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(expiresInSeconds) * time.Second)),
+		Subject:   fmt.Sprintf("%d", userID),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	signedToken, err := token.SignedString(signingKey)
+	if err != nil {
+		return "", err
+	}
+
+	return signedToken, nil
+}
+
+func CreateRefreshToken(userID int, tokenSecret string, expiresInSeconds int64) (string, error) {
+
+	signingKey := []byte(tokenSecret)
+	now := time.Now().UTC()
+
+	claims := jwt.RegisteredClaims{
+		Issuer:    "chirpy-refresh",
 		IssuedAt:  jwt.NewNumericDate(now),
 		ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(expiresInSeconds) * time.Second)),
 		Subject:   fmt.Sprintf("%d", userID),
@@ -66,6 +88,28 @@ func ValidateJWT(tokenString, tokenSecret string) (string, error) {
 	}
 
 	return "", nil
+
+}
+
+func ValidateToken(tokenString, tokenSecret string) (subject, issuer string, err error) {
+	claimsStruct := jwt.RegisteredClaims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, &claimsStruct, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(tokenSecret), nil
+	})
+	if err != nil {
+		return "", "", err
+	}
+
+	// Return user ID if valid
+	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
+		return claims.Subject, claims.Issuer, nil
+	}
+
+	return "", "", nil
 
 }
 

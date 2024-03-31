@@ -13,8 +13,9 @@ type DB struct {
 }
 
 type DBStructure struct {
-	Chirps map[int]Chirp `json:"chirps"`
-	Users  map[int]User  `json:"users"`
+	Chirps        map[int]Chirp     `json:"chirps"`
+	Users         map[int]User      `json:"users"`
+	RefreshTokens map[string]Status `json:"tokens"`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -59,7 +60,7 @@ func (db *DB) loadDB() (DBStructure, error) {
 	}
 
 	if len(data) == 0 {
-		return DBStructure{Chirps: make(map[int]Chirp), Users: make(map[int]User)}, nil
+		return DBStructure{Chirps: make(map[int]Chirp), Users: make(map[int]User), RefreshTokens: make(map[string]Status)}, nil
 	}
 	dbData := DBStructure{}
 	err = json.Unmarshal(data, &dbData)
@@ -75,6 +76,8 @@ func (db *DB) loadDB() (DBStructure, error) {
 	if dbData.Users == nil {
 		dbData.Users = make(map[int]User)
 	}
-
+	if dbData.RefreshTokens == nil {
+		dbData.RefreshTokens = make(map[string]Status)
+	}
 	return dbData, nil
 }
