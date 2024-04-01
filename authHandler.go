@@ -69,7 +69,7 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, response{User{ID: user.ID, Email: user.Email, Token: accessToken, RefreshToken: refreshToken}})
+	respondWithJSON(w, http.StatusOK, response{User{ID: user.ID, Email: user.Email, IsChirpyRed: user.IsChirpyRed, Token: accessToken, RefreshToken: refreshToken}})
 
 }
 

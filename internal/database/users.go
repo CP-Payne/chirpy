@@ -6,12 +6,14 @@ import (
 )
 
 type User struct {
-	ID       int    `json:"id"`
-	Email    string `json:"email"`
-	Password string
+	ID          int    `json:"id"`
+	Email       string `json:"email"`
+	Password    string
+	IsChirpyRed bool `json:"is_chirpy_red"`
 }
 
 var ErrAlreadyExists = errors.New("already exists")
+var ErrUserNotFound = errors.New("user not found")
 
 func (db *DB) CreateUser(email string, passwordHash string) (User, error) {
 	dbData, err := db.loadDB()
@@ -30,9 +32,10 @@ func (db *DB) CreateUser(email string, passwordHash string) (User, error) {
 	newId++
 
 	newUser := User{
-		ID:       newId,
-		Email:    email,
-		Password: passwordHash,
+		ID:          newId,
+		Email:       email,
+		Password:    passwordHash,
+		IsChirpyRed: false,
 	}
 	dbData.Users[newId] = newUser
 	err = db.writeDB(dbData)
@@ -99,6 +102,30 @@ func (db *DB) UpdateUser(id int, email, hashedPassword string) error {
 	}
 	user.Email = email
 	user.Password = hashedPassword
+
+	dbData.Users[id] = user
+
+	err = db.writeDB(dbData)
+	if err != nil {
+		fmt.Printf("Failed to write to database: %v", err)
+		return err
+
+	}
+	return nil
+
+}
+func (db *DB) UpgradeUser(id int) error {
+	dbData, err := db.loadDB()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	user, ok := dbData.Users[id]
+	if !ok {
+		return ErrUserNotFound
+	}
+	user.IsChirpyRed = true
 
 	dbData.Users[id] = user
 

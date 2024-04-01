@@ -59,6 +59,8 @@ func main() {
 
 	mux.HandleFunc("GET /admin/metrics", http.HandlerFunc(cfg.handlerMetrics))
 
+	mux.HandleFunc("POST /api/polka/webhooks", http.HandlerFunc(cfg.handlerUpgradeUser))
+
 	// mux.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets/"))))
 
 	fmt.Printf("Listening on port %s\n", srv.Addr)
