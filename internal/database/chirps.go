@@ -39,6 +39,30 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	return chirps, nil
 }
 
+func (db *DB) GetChirpsByAuthorID(authorID int) ([]Chirp, error) {
+	dbData, err := db.loadDB()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	if dbData.Chirps == nil {
+		return []Chirp{}, nil
+	}
+
+	chirps := make([]Chirp, 0, len(dbData.Chirps))
+
+	for _, chirp := range dbData.Chirps {
+		if chirp.AuthorID == authorID {
+			chirps = append(chirps, chirp)
+		}
+	}
+	sort.Slice(chirps, func(i, j int) bool {
+		return chirps[i].ID < chirps[j].ID
+	})
+	return chirps, nil
+}
+
 func (db *DB) GetChirp(id int) (Chirp, error) {
 	dbData, err := db.loadDB()
 	if err != nil {
