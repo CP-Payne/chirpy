@@ -1,14 +1,18 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 )
 
 type Chirp struct {
-	ID   int    `json:"id"`
-	Body string `json:"body"`
+	ID       int    `json:"id"`
+	Body     string `json:"body"`
+	AuthorID int    `json:"author_id"`
 }
+
+var ErrNotFound = errors.New("resource not found")
 
 func (db *DB) GetChirps() ([]Chirp, error) {
 	dbData, err := db.loadDB()
@@ -47,8 +51,25 @@ func (db *DB) GetChirp(id int) (Chirp, error) {
 	}
 	return chirp, nil
 }
+func (db *DB) DeleteChirp(id int) error {
+	dbData, err := db.loadDB()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	_, ok := dbData.Chirps[id]
+	if !ok {
+		return ErrNotFound
+	}
+	delete(dbData.Chirps, id)
+	err = db.writeDB(dbData)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) CreateChirp(body string, authorID int) (Chirp, error) {
 	dbData, err := db.loadDB()
 	if err != nil {
 		fmt.Println(err)
@@ -65,8 +86,9 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	newId++
 
 	newChirp := Chirp{
-		ID:   newId,
-		Body: body,
+		ID:       newId,
+		Body:     body,
+		AuthorID: authorID,
 	}
 
 	// if storedChirps.Chirps == nil {

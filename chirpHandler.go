@@ -2,10 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/CP-Payne/chirpy/internal/auth"
+	"github.com/CP-Payne/chirpy/internal/database"
 )
 
 func handlerReadiness(w http.ResponseWriter, r *http.Request) {
@@ -85,9 +89,31 @@ func (cfg *apiConfig) handlerAddChirp(w http.ResponseWriter, r *http.Request) {
 		Body string `json:"body"`
 	}
 
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't find JWT")
+		return
+	}
+
+	subject, issuer, err := auth.ValidateToken(token, cfg.jwtSecret)
+	if err != nil || subject == "" || issuer == "" {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT")
+		return
+	}
+
+	if issuer != "chirpy-access" {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT")
+		return
+	}
+
+	userIdInt, err := strconv.Atoi(subject)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't parse user ID from token")
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	chirpText := params{}
-	err := decoder.Decode(&chirpText)
+	err = decoder.Decode(&chirpText)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode paramters")
 		return
@@ -106,12 +132,71 @@ func (cfg *apiConfig) handlerAddChirp(w http.ResponseWriter, r *http.Request) {
 
 	cleandedChirp := cleanChirp(chirpText.Body, badWords)
 
-	chirp, err := cfg.DB.CreateChirp(cleandedChirp)
+	chirp, err := cfg.DB.CreateChirp(cleandedChirp, userIdInt)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	respondWithJSON(w, http.StatusCreated, chirp)
+}
+
+func (cfg *apiConfig) handlerDeleteChirp(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("chirp_id")
+	intId, err := strconv.Atoi(id)
+	if err != nil {
+		fmt.Println(err)
+		respondWithError(w, http.StatusBadRequest, "Invalid chirp id")
+		return
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't find JWT")
+		return
+	}
+
+	subject, issuer, err := auth.ValidateToken(token, cfg.jwtSecret)
+	if err != nil || subject == "" || issuer == "" {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT")
+		return
+	}
+
+	if issuer != "chirpy-access" {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT")
+		return
+	}
+
+	chirp, err := cfg.DB.GetChirp(intId)
+	if err != nil {
+		fmt.Println(err)
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+	if chirp.ID == 0 {
+		respondWithError(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+		return
+	}
+	// Compare chirp author with subject
+	authorID, err := strconv.Atoi(subject)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't parse user ID")
+		return
+	}
+	if authorID != chirp.AuthorID {
+		respondWithError(w, http.StatusForbidden, "You do not own this resource")
+		return
+	}
+	err = cfg.DB.DeleteChirp(intId)
+	if err != nil {
+		fmt.Println(err)
+		if errors.Is(err, database.ErrNotFound) {
+			respondWithError(w, http.StatusNotFound, "Chirp not found")
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+	respondWithJSON(w, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
 func cleanChirp(chirpText string, badWords map[string]struct{}) (cleanedChirp string) {
