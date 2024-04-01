@@ -10,6 +10,7 @@ import (
 
 	"github.com/CP-Payne/chirpy/internal/auth"
 	"github.com/CP-Payne/chirpy/internal/database"
+	"github.com/CP-Payne/chirpy/internal/utils"
 )
 
 func handlerReadiness(w http.ResponseWriter, r *http.Request) {
@@ -49,15 +50,23 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
+	type ChirpResponse struct {
+		ID       int    `json:"id"`
+		Body     string `json:"body"`
+		AuthorID int    `json:"author_id"`
+	}
 	// Optional parameter
-	authorIDParam, ok := r.URL.Query()["author_id"]
+	queries := r.URL.Query()
+	authorIDParam := queries.Get("author_id")
+	sortParam := queries.Get("sort")
 	var chirps []database.Chirp
 	var err error
-	if ok && len(authorIDParam[0]) > 0 {
+
+	if authorIDParam != "" {
 		// Convert author_id from string to int
-		authorID, err := strconv.Atoi(authorIDParam[0])
+		authorID, err := strconv.Atoi(authorIDParam)
 		if err != nil {
-			http.Error(w, "Invalid author_id parameter", http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, "invalid author id")
 			return
 		}
 		// Fetch chirps for the given author ID
@@ -69,9 +78,23 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps")
+		return
+	}
+	if sortParam != "" {
+		chirps = utils.SortChirpSlice(chirps, sortParam)
+
+	}
+	// Create new response to ommit created_at field
+	response := make([]ChirpResponse, len(chirps))
+	for i, chirp := range chirps {
+		response[i] = ChirpResponse{
+			ID:       chirp.ID,
+			Body:     chirp.Body,
+			AuthorID: chirp.AuthorID,
+		}
 	}
 
-	respondWithJSON(w, http.StatusOK, chirps)
+	respondWithJSON(w, http.StatusOK, response)
 
 }
 
@@ -153,7 +176,17 @@ func (cfg *apiConfig) handlerAddChirp(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 
-	respondWithJSON(w, http.StatusCreated, chirp)
+	type response struct {
+		ID       int    `json:"id"`
+		Body     string `json:"body"`
+		AuthorID int    `json:"author_id"`
+	}
+
+	respondWithJSON(w, http.StatusCreated, response{
+		ID:       chirp.ID,
+		Body:     chirp.Body,
+		AuthorID: chirp.AuthorID,
+	})
 }
 
 func (cfg *apiConfig) handlerDeleteChirp(w http.ResponseWriter, r *http.Request) {

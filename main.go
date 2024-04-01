@@ -48,7 +48,6 @@ func main() {
 	mux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app", fileServer)))
 
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
-	mux.HandleFunc("/api/reset", http.HandlerFunc(cfg.handlerReset))
 	mux.HandleFunc("POST /api/chirps", http.HandlerFunc(cfg.handlerAddChirp))
 	mux.HandleFunc("GET /api/chirps", http.HandlerFunc(cfg.handlerGetChirps))
 	mux.HandleFunc("GET /api/chirps/{chirp_id}", http.HandlerFunc(cfg.handlerGetChirp))
@@ -61,6 +60,7 @@ func main() {
 	mux.HandleFunc("POST /api/revoke", http.HandlerFunc(cfg.handlerRevokeToken))
 
 	mux.HandleFunc("GET /admin/metrics", http.HandlerFunc(cfg.handlerMetrics))
+	mux.HandleFunc("/api/reset", http.HandlerFunc(cfg.handlerReset))
 
 	mux.HandleFunc("POST /api/polka/webhooks", http.HandlerFunc(cfg.handlerUpgradeUser))
 

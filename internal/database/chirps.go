@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 )
 
 type Chirp struct {
-	ID       int    `json:"id"`
-	Body     string `json:"body"`
-	AuthorID int    `json:"author_id"`
+	AuthorID  int       `json:"author_id"`
+	Body      string    `json:"body"`
+	ID        int       `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 var ErrNotFound = errors.New("resource not found")
@@ -110,9 +112,10 @@ func (db *DB) CreateChirp(body string, authorID int) (Chirp, error) {
 	newId++
 
 	newChirp := Chirp{
-		ID:       newId,
-		Body:     body,
-		AuthorID: authorID,
+		ID:        newId,
+		Body:      body,
+		AuthorID:  authorID,
+		CreatedAt: time.Now(),
 	}
 
 	// if storedChirps.Chirps == nil {
