@@ -14,6 +14,7 @@ type apiConfig struct {
 	fileserverHits int
 	DB             *database.DB
 	jwtSecret      string
+	polkaApiKey    string
 }
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
 	godotenv.Load()
 
 	jwtSecret := os.Getenv("JWT_SECRET")
+	apiKey := os.Getenv("WEBHOOK_API")
 
 	db, err := database.NewDB("./database.json")
 	if err != nil {
@@ -31,6 +33,7 @@ func main() {
 		fileserverHits: 0,
 		DB:             db,
 		jwtSecret:      jwtSecret,
+		polkaApiKey:    apiKey,
 	}
 
 	corsMux := middlewareCors(mux)
