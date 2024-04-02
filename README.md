@@ -38,7 +38,7 @@ Below is a list of available endpoints, grouped by functionality. Detailed docum
 - [`POST /api/polka/webhooks`](./docs/webhooks/upgradeUser.md) - Upgrade the user role through a webhook.
 
 ### Other
-- [`GET /app`](./docs/other/servingFiles.md) - A simple endpoint to display the homepage content.
+- [`GET /app`](./docs/other/servingFiles.md) - A simple endpoint to serve static files.
 
 ## Current Data Storage Implementation
 
