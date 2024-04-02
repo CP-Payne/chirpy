@@ -6,11 +6,11 @@ The `database.json` file organizes data in a structured JSON format. Here is an 
 {   
 "chirps": {     
 		"1": {
-		       "author_id": 1,       
-		       "body": "I'm the one who knocks!",       
-		       "id": 1,       
-		       "created_at": "2024-04-01T21:55:08.111276848+02:00"     
-		       },     
+			"author_id": 1,       
+			"body": "I'm the one who knocks!",       
+			"id": 1,       
+			"created_at": "2024-04-01T21:55:08.111276848+02:00"     
+			},     
 		"2": {     
 		  "author_id": 1,       
 		  "body": "Gale!",       
