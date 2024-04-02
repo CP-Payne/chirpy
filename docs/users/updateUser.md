@@ -65,7 +65,7 @@ This endpoint allows authenticated users to update their account information, in
 
 To update a user's email and password, you would make the following request:
 
-```json
+```bash
 curl -X PUT 'http://localhost:8080/api/users' \
 -H 'Content-Type: application/json' \
 -H 'Authorization: Bearer <jwt-token>' \
