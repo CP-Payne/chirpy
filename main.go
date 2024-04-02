@@ -48,20 +48,27 @@ func main() {
 	mux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app", fileServer)))
 
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
+
+	// Chirps
 	mux.HandleFunc("POST /api/chirps", http.HandlerFunc(cfg.handlerAddChirp))
 	mux.HandleFunc("GET /api/chirps", http.HandlerFunc(cfg.handlerGetChirps))
 	mux.HandleFunc("GET /api/chirps/{chirp_id}", http.HandlerFunc(cfg.handlerGetChirp))
 	mux.HandleFunc("DELETE /api/chirps/{chirp_id}", http.HandlerFunc(cfg.handlerDeleteChirp))
 
+	// Users
 	mux.HandleFunc("POST /api/users", http.HandlerFunc(cfg.handlerCreateUser))
 	mux.HandleFunc("PUT /api/users", http.HandlerFunc(cfg.handlerUpdateUser))
+
+	// Auth
 	mux.HandleFunc("POST /api/login", http.HandlerFunc(cfg.handlerLoginUser))
 	mux.HandleFunc("POST /api/refresh", http.HandlerFunc(cfg.handlerRefreshToken))
 	mux.HandleFunc("POST /api/revoke", http.HandlerFunc(cfg.handlerRevokeToken))
 
+	// Metrics
 	mux.HandleFunc("GET /admin/metrics", http.HandlerFunc(cfg.handlerMetrics))
-	mux.HandleFunc("/api/reset", http.HandlerFunc(cfg.handlerReset))
+	mux.HandleFunc("POST /api/reset", http.HandlerFunc(cfg.handlerReset))
 
+	// Webhooks
 	mux.HandleFunc("POST /api/polka/webhooks", http.HandlerFunc(cfg.handlerUpgradeUser))
 
 	// mux.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets/"))))

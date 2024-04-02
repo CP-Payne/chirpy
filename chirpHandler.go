@@ -30,7 +30,7 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	// }
 	// TODO
 	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// hits := fmt.Sprintf("Hits: %d", cfg.fileserverHits)
 	fmt.Fprintf(w, `<html>
 	  <body>
